@@ -45,7 +45,6 @@
     "gecko": {
       "id": "nokakulaleveling@subakon.dev",
       "strict_min_version": "128.0",
-      "update_url": "https://raw.githubusercontent.com/SubaKon/NoKakulaLeveling/refs/heads/main/updates.json"
     }
   }
 }
