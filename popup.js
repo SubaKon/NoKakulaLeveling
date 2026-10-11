@@ -24,6 +24,33 @@ document.addEventListener('DOMContentLoaded', function() {
   const versionInfo = document.getElementById('versionInfo');
   const downloadUpdateBtn = document.getElementById('downloadUpdateBtn');
 
+  // ================= Тёмная тема в стиле Twitch =================
+  const themeToggleBtn = document.getElementById('themeToggle');
+
+  // Применяем тему сразу, чтобы не было "белой вспышки" при открытии popup
+  function applyTheme(isDark) {
+    document.body.classList.toggle('dark-theme', isDark);
+    themeToggleBtn.textContent = isDark ? '☀️' : '🌙';
+    themeToggleBtn.title = isDark ? 'Светлая тема' : 'Тёмная тема';
+  }
+
+  chrome.storage.sync.get(['darkTheme'], function(result) {
+    // Если тема не сохранялась — подстраиваемся под системную
+    let isDark = result.darkTheme;
+    if (typeof isDark !== 'boolean') {
+      isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    applyTheme(isDark);
+  });
+
+  themeToggleBtn.addEventListener('click', function() {
+    const isDark = !document.body.classList.contains('dark-theme');
+    applyTheme(isDark);
+    chrome.storage.sync.set({ darkTheme: isDark });
+    console.log('Тема изменена, darkTheme:', isDark);
+  });
+  // =================================================================
+
   // Загружаем сохраненное состояние второго тумблера
   chrome.storage.sync.get(['hideOthersKakula'], function(result) {
     toggle2.checked = result.hideOthersKakula || false;
@@ -103,13 +130,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Показываем/скрываем маленькие тумблеры
     subToggles.style.display = this.checked ? 'block' : 'none';
 
-    // При выключении сбрасываем маленькие тумблеры
-    if (!this.checked) {
-      toggleBaseCommand.checked = false;
-      toggleKakulaCommand.checked = false;
-      toggleKakulaDefense.checked = false;
-      chrome.storage.sync.set({ quickCommandBase: false, quickCommandKakula: false, quickCommandKakulaDefense: false });
-    }
   });
 
   // Обработчик для маленького тумблера "Это база, это знать надо"

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "NoKakulaLeveling",
-  "version": "1.2.5",
+  "version": "1.3.0",
   "description": "Удали Какула Левелинг из своего чата!",
   "permissions": [
     "storage"
@@ -25,7 +25,7 @@
   "content_scripts": [
     {
       "matches": ["https://www.twitch.tv/*"],
-      "js": ["filter.js", "content.js", "chat-input.js"],
+      "js": ["browser-polyfill.js", "filter.js", "content.js", "chat-input.js"],
       "run_at": "document_idle"
     },
     {
@@ -40,5 +40,16 @@
       "resources": ["patterns.json"],
       "matches": ["https://www.twitch.tv/*"]
     }
-  ]
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "@nokakulaleveling.subakon",
+      "strict_min_version": "142.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
+    }
+  }
 }

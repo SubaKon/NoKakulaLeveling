@@ -1,0 +1,12 @@
+{
+  "addons": {
+    "{abcd1234-1abc-1234-12ab-abcdef123456}": {
+      "updates": [
+        {
+          "version": "1.3.0",
+          "update_link": "https://github.com/SubaKon/NoKakulaLeveling/releases/download/1.3.0/NoKakulaLevelig-1.3.0.xpi"
+        }
+      ]
+    }
+  }
+}

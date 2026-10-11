@@ -1,24 +1,51 @@
 <!DOCTYPE html>
-<html lang="ru">
-<head>
+<html lang="ru"><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
   <meta charset="UTF-8">
   <style>
+    :root {
+      --bg: #f5f5f5;
+      --card-bg: white;
+      --text-primary: #333;
+      --text-secondary: #666;
+      --text-muted: #999;
+      --border-color: #eee;
+      --footer-border: #ddd;
+      --slider-off: #ccc;
+      --accent: #9147ff;
+      --accent-hover: #7d2ae8;
+      --on-color: #00b06b;
+    }
+
+    /* Тёмная тема в стиле Twitch */
+    body.dark-theme {
+      --bg: #0e0e10;
+      --card-bg: #1f1f23;
+      --text-primary: #efeff1;
+      --text-secondary: #adadb8;
+      --text-muted: #8c8c97;
+      --border-color: #39393c;
+      --footer-border: #39393c;
+      --slider-off: #39393c;
+    }
+
     body {
       width: 320px;
       padding: 20px;
       font-family: Arial, sans-serif;
-      background: #f5f5f5;
+      background: var(--bg);
+      transition: background 0.3s;
     }
 
     h1 {
-      color: #333;
+      color: var(--text-primary);
       font-size: 20px;
       margin: 0 0 5px 0;
       text-align: center;
     }
 
     h2 {
-      color: #666;
+      color: var(--text-secondary);
       font-size: 14px;
       font-weight: normal;
       margin: 0 0 20px 0;
@@ -28,7 +55,7 @@
     }
 
     .toggle-container {
-      background: white;
+      background: var(--card-bg);
       border-radius: 8px;
       padding: 15px;
       margin-bottom: 10px;
@@ -44,7 +71,7 @@
 
     .toggle-text {
       font-size: 14px;
-      color: #333;
+      color: var(--text-primary);
       flex: 1;
     }
 
@@ -68,7 +95,7 @@
       left: 0;
       right: 0;
       bottom: 0;
-      background-color: #ccc;
+      background-color: var(--slider-off);
       transition: .4s;
       border-radius: 26px;
     }
@@ -86,7 +113,7 @@
     }
 
     input:checked + .slider {
-      background-color: #4CAF50;
+      background-color: var(--on-color);
     }
 
     input:checked + .slider:before {
@@ -97,7 +124,7 @@
     .sub-toggles {
       margin-top: 12px;
       padding-top: 10px;
-      border-top: 1px solid #eee;
+      border-top: 1px solid var(--border-color);
     }
 
     .sub-toggle-item {
@@ -123,13 +150,13 @@
     .sub-toggle-hint {
       display: block;
       font-size: 11px;
-      color: #999;
+      color: var(--text-muted);
       margin-top: 2px;
     }
 
     /* Стили для поля ввода ника */
     .nickname-container {
-      background: white;
+      background: var(--card-bg);
       border-radius: 8px;
       padding: 15px;
       margin-bottom: 10px;
@@ -139,7 +166,7 @@
     .nickname-label {
       display: block;
       font-size: 13px;
-      color: #333;
+      color: var(--text-primary);
       margin-bottom: 8px;
     }
 
@@ -152,20 +179,26 @@
       flex: 1;
       padding: 8px 10px;
       font-size: 14px;
-      border: 1px solid #ccc;
+      border: 1px solid var(--slider-off);
       border-radius: 6px;
       outline: none;
       box-sizing: border-box;
+      background: var(--bg);
+      color: var(--text-primary);
+    }
+
+    #nicknameInput::placeholder {
+      color: var(--text-muted);
     }
 
     #nicknameInput:focus {
-      border-color: #9147ff;
+      border-color: var(--accent);
     }
 
     #saveNickname {
       padding: 8px 14px;
       font-size: 13px;
-      background: #9147ff;
+      background: var(--accent);
       color: white;
       border: none;
       border-radius: 6px;
@@ -174,18 +207,18 @@
     }
 
     #saveNickname:hover {
-      background: #7d2ae8;
+      background: var(--accent-hover);
     }
 
     .nickname-hint {
       font-size: 11px;
-      color: #999;
+      color: var(--text-muted);
       margin-top: 6px;
     }
 
     /* Стили для блока проверки обновлений */
     .update-container {
-      background: white;
+      background: var(--card-bg);
       border-radius: 8px;
       padding: 15px;
       margin-bottom: 10px;
@@ -196,7 +229,7 @@
     #checkUpdateBtn {
       padding: 8px 14px;
       font-size: 13px;
-      background: #9147ff;
+      background: var(--accent);
       color: white;
       border: none;
       border-radius: 6px;
@@ -204,7 +237,7 @@
     }
 
     #checkUpdateBtn:hover {
-      background: #7d2ae8;
+      background: var(--accent-hover);
     }
 
     #checkUpdateBtn:disabled {
@@ -214,7 +247,7 @@
 
     .version-info {
       font-size: 12px;
-      color: #666;
+      color: var(--text-secondary);
       margin-top: 8px;
     }
 
@@ -222,7 +255,7 @@
       display: block;
       margin-top: 10px;
       padding: 12px 10px;
-      background: #4CAF50;
+      background: var(--on-color);
       color: white;
       font-size: 14px;
       font-weight: bold;
@@ -232,7 +265,7 @@
     }
 
     .download-btn:hover {
-      background: #43a047;
+      background: #00985c;
     }
 
     /* Стили для footer */
@@ -240,18 +273,41 @@
       margin-top: 20px;
       text-align: center;
       font-size: 11px;
-      color: #999;
-      border-top: 1px solid #ddd;
+      color: var(--text-muted);
+      border-top: 1px solid var(--footer-border);
       padding-top: 10px;
     }
 
     .footer span {
-      color: #666;
+      color: var(--text-secondary);
       font-weight: bold;
+    }
+
+    /* Кнопка переключения темы (🌙 / ☀️) в стиле Twitch */
+    #themeToggle {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background: var(--card-bg);
+      color: var(--text-primary);
+      font-size: 16px;
+      line-height: 1;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    #themeToggle:hover {
+      background: var(--accent);
+      border-color: var(--accent);
     }
   </style>
 </head>
 <body>
+  <button id="themeToggle" title="Переключить тему">🌙</button>
   <h1>NoKakulaLeveling!</h1>
   <h2>Settings</h2>
 
@@ -269,7 +325,7 @@
   <div class="nickname-container">
     <label class="nickname-label" for="nicknameInput">Ваш Twitch ник:</label>
     <div class="nickname-row">
-      <input type="text" id="nicknameInput" placeholder="например: SubaKon" autocomplete="off" spellcheck="false">
+      <input type="text" id="nicknameInput" placeholder="например: lipanya_" autocomplete="off" spellcheck="false" style="width: 191.6px;">
       <button id="saveNickname">Сохранить</button>
     </div>
     <div class="nickname-hint">Нужно чтобы не скрывать сообщения с упоминанием вас</div>
@@ -339,8 +395,7 @@
   <div class="update-container">
     <button id="checkUpdateBtn">Проверить обновление</button>
     <div class="version-info" id="versionInfo"></div>
-    <a id="downloadUpdateBtn" class="download-btn" style="display: none;"
-       href="https://github.com/SubaKon/NoKakulaLeveling" target="_blank" rel="noopener">
+    <a id="downloadUpdateBtn" class="download-btn" style="display: none;" href="https://github.com/SubaKon/NoKakulaLeveling" target="_blank" rel="noopener">
       Скачать бесплатно без СМС и регистрации
     </a>
   </div>
@@ -350,6 +405,8 @@
     powered by <span>SubaKon</span>
   </div>
 
+  <script src="browser-polyfill.js"></script>
   <script src="popup.js"></script>
-</body>
-</html>
+
+
+</body></html>

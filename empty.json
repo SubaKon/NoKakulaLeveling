@@ -1,0 +1,25 @@
+{
+  "version": {
+    "license": "Apache-2.0"
+  },
+  "categories": {
+    "firefox": ["websites-social-media"]
+  },
+  "name": {
+    "en-US": "NoKakulaLeveling"
+  },
+  "summary": {
+    "en-US": "Twitch chat enhancement: message highlighting, filters and leveling."
+  },
+  "description": {
+    "en-US": "NoKakulaLeveling filters Twitch chat for user convenience and adds a helper window for entering bot commands. The extension does not collect any data."
+  },
+  "homepage_url": {
+    "en-US": "https://github.com/subakon/NoKakulaLeveling"
+  },
+  "support_url": {
+    "en-US": "https://github.com/subakon/NoKakulaLeveling/issues"
+  },
+  "contributions_url": "",
+  "requires_payment": false
+}
