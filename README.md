@@ -2,7 +2,7 @@
 
 Браузерное расширение для Twitch: **скрывает Какула Левелинг из чата** и добавляет **быстрые команды с автодополнением** прямо в поле ввода.
 
-![beta](https://img.shields.io/badge/beta-v1.3.0-orange)
+![beta](https://img.shields.io/badge/beta-v1.3.1-orange)
 [![Release](https://img.shields.io/github/v/release/SubaKon/NoKakulaLeveling?label=stable&color=green)](https://github.com/SubaKon/NoKakulaLeveling/releases/latest)
 ![platform](https://img.shields.io/badge/platform-Chrome%20%7C%20Edge%20%7C%20Yandex%20%7C%20Firefox-informational)
 ![manifest](https://img.shields.io/badge/Manifest%20V3-blue)
