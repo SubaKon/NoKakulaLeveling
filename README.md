@@ -140,8 +140,11 @@
 - [SevenTV Extension](https://github.com/SevenTV/Extension/) -- за элегантный метод вставки текста в Slate-редактор Twitch, портированный в это расширение.
 - [Qwen Coder](https://coder.qwen.ai) -- да, к этому расширению также приложил свою цифровую ИИ руку Qwen
 
-## ₽ Поддержать разраба
-- [Дон алёрт](https://www.donationalerts.com/r/subakon)
+## Помочь проекту
+- Помочь ₽ [Дон алёрт](https://www.donationalerts.com/r/subakon)
+- Ищите баги
+- Предлагайте идеи
+- Пишите про забытые команды
 
 Пользуйтесь с любовью
 
