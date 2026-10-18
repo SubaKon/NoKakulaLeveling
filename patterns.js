@@ -230,59 +230,99 @@
   }
 
   // ==================== Хелперы по новому формату ====================
+  //
+  // ВАЖНО: никаких захардкоженных каналов/ботов/секций — все хелперы
+  // работают со ВСЕМИ каналами из памяти ({ channelKey: <файл> }), поэтому
+  // добавление нового канала = новый файл patterns/<Канал>.json + его имя
+  // в списке PATTERN_FILES, без правки filter.js / chat-input.js / popup.js.
 
-  // Первый канал-объект (сейчас жёстко один — AlexstraWho)
-  function getChannel(patternsData) {
-    if (!patternsData) return null;
-    const keys = Object.keys(patternsData);
-    if (keys.length === 0) return null;
-    return patternsData[keys[0]];
+  // Все каналы списком (каждый — содержимое файла паттернов целиком).
+  function getChannels(patternsData) {
+    if (!patternsData) return [];
+    return Object.keys(patternsData).map(function (k) { return patternsData[k]; });
   }
 
-  // Плоский список всех паттернов канала (для фильтра сообщений):
-  // только паттерны командных секций. Паттерны ботов (секция bots) в общий
-  // список НЕ попадают — они применяются исключительно к сообщениям самого бота,
-  // иначе шаблон "*" у Nightbot скрывал бы вообще весь чат.
+  // Первый канал-объект (оставлен для совместимости; сейчас каналов может быть несколько)
+  function getChannel(patternsData) {
+    const list = getChannels(patternsData);
+    return list.length ? list[0] : null;
+  }
+
+  // Плоский список всех паттернов командных секций всех каналов (для фильтра сообщений).
+  // Паттерны ботов (секция bots) в общий список НЕ попадают — они применяются
+  // исключительно к сообщениям самого бота, иначе шаблон "*" у Nightbot
+  // скрывал бы вообще весь чат.
   function getAllPatterns(patternsData) {
-    const ch = getChannel(patternsData);
-    if (!ch) return [];
     const out = [];
-    (ch.commands || []).forEach(function (c) {
-      (c.patterns || []).forEach(function (p) { out.push(p); });
+    getChannels(patternsData).forEach(function (ch) {
+      (ch.commands || []).forEach(function (c) {
+        (c.patterns || []).forEach(function (p) { out.push(p); });
+      });
     });
     return out;
   }
 
-  // Паттерны конкретного бота по нику (регистронезависимо).
+  // Паттерны конкретного бота по нику (регистронезависимо), во всех каналах.
   function getBotPatterns(patternsData, botUsername) {
-    const ch = getChannel(patternsData);
-    if (!ch || !botUsername) return [];
+    if (!botUsername) return [];
     const target = String(botUsername).toLowerCase();
     const out = [];
-    (ch.bots || []).forEach(function (b) {
-      if (String(b.botUsername).toLowerCase() === target) {
-        (b.patterns || []).forEach(function (p) { out.push(p); });
-      }
+    getChannels(patternsData).forEach(function (ch) {
+      (ch.bots || []).forEach(function (b) {
+        if (String(b.botUsername).toLowerCase() === target) {
+          (b.patterns || []).forEach(function (p) { out.push(p); });
+        }
+      });
     });
     return out;
   }
 
-  // Командные секции, отсортированные по order (для быстрых команд).
+  // Командные секции всех каналов, отсортированные по order (для быстрых команд).
   function getCommandSections(patternsData) {
-    const ch = getChannel(patternsData);
-    if (!ch) return [];
-    return (ch.commands || []).slice().sort(function (a, b) {
+    const out = [];
+    getChannels(patternsData).forEach(function (ch) {
+      (ch.commands || []).forEach(function (c) { out.push(c); });
+    });
+    return out.slice().sort(function (a, b) {
       return (a.order || 0) - (b.order || 0);
     });
+  }
+
+  // Секции ботов всех каналов (для тумблеров «Фильтры сообщений» и фильтра).
+  function getBotSections(patternsData) {
+    const out = [];
+    getChannels(patternsData).forEach(function (ch) {
+      (ch.bots || []).forEach(function (b) { out.push(b); });
+    });
+    return out;
+  }
+
+  // Специальный префиксный паттерн "$smile$*" — «скрыть сообщение, если оно
+  // начинается со смайлика (картинка-эмодзи Twitch или юникод-небуква)».
+  // Наличие этого паттерна у бота включает соответствующую проверку в filter.js;
+  // паттерны "@..." обрабатываются дефолтной логикой (@ — обычный символ).
+  const SMILE_PATTERN = '$smile$*';
+  function hasSmilePattern(patternList) {
+    return Array.isArray(patternList) && patternList.indexOf(SMILE_PATTERN) !== -1;
+  }
+
+  // Обычные текстовые паттерны бота — без спецпаттерна $smile$*.
+  function withoutSmilePattern(patternList) {
+    if (!Array.isArray(patternList)) return [];
+    return patternList.filter(function (p) { return p !== SMILE_PATTERN; });
   }
 
   // Экспорт наружу
   window.NKLPatterns = {
     ensureLoaded: ensurePatternsLoaded,
+    getChannels: getChannels,
     getChannel: getChannel,
     getAllPatterns: getAllPatterns,
     getBotPatterns: getBotPatterns,
+    getBotSections: getBotSections,
     getCommandSections: getCommandSections,
+    hasSmilePattern: hasSmilePattern,
+    withoutSmilePattern: withoutSmilePattern,
     updateFromGitHub: updatePatternsFromGitHub,
     MAX_COMPATIBILITY_VERSION: MAX_COMPATIBILITY_VERSION,
     READY_EVENT: PATTERNS_READY_EVENT

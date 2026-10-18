@@ -120,11 +120,19 @@
       transform: translateX(24px);
     }
 
-    /* Стили для маленьких тумблеров (Быстрые команды) */
+    /* Стили для маленьких тумблеров (Быстрые команды / Фильтры сообщений) */
     .sub-toggles {
       margin-top: 12px;
       padding-top: 10px;
       border-top: 1px solid var(--border-color);
+    }
+
+    .sub-toggles-title {
+      display: block;
+      font-size: 12px;
+      font-weight: bold;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
     }
 
     .sub-toggle-item {
@@ -340,71 +348,20 @@
   <h1>NoKakulaLeveling!</h1>
   <h2>Settings</h2>
 
-  <div class="toggle-container">
-    <label class="toggle-label">
-      <span class="toggle-text">Скрыть чужой Какула Левелинг</span>
-      <div class="toggle-switch">
-        <input type="checkbox" id="toggle2">
-        <span class="slider"></span>
-      </div>
-    </label>
-  </div>
-
-  <!-- Поле ввода ника пользователя -->
+  <!-- Поле ввода ника пользователя — ПЕРВЫЙ элемент: без ника каналы недоступны -->
   <div class="nickname-container">
     <label class="nickname-label" for="nicknameInput">Ваш Twitch ник:</label>
     <div class="nickname-row">
       <input type="text" id="nicknameInput" placeholder="например: lipanya_" autocomplete="off" spellcheck="false" style="width: 191.6px;">
       <button id="saveNickname">Сохранить</button>
     </div>
-    <div class="nickname-hint">Нужно чтобы не скрывать сообщения с упоминанием вас</div>
+    <div class="nickname-hint">Нужен, чтобы не скрывать сообщения с упоминанием вас, и чтобы включать тумблеры каналов</div>
   </div>
 
-  <div class="toggle-container">
-    <label class="toggle-label">
-      <span class="toggle-text">Быстрые команды</span>
-      <div class="toggle-switch">
-        <input type="checkbox" id="toggleQuickCommands">
-        <span class="slider"></span>
-      </div>
-    </label>
-
-    <!-- Маленькие тумблеры, появляются при активации "Быстрые команды" -->
-    <div class="sub-toggles" id="subToggles" style="display: none;">
-      <div class="sub-toggle-item">
-        <label class="toggle-label">
-          <span class="toggle-text">
-            Это база, это знать надо
-            <span class="sub-toggle-hint">Должен был уже наизусть выучить</span>
-          </span>
-          <div class="toggle-switch small">
-            <input type="checkbox" id="toggleBaseCommand">
-            <span class="slider"></span>
-          </div>
-        </label>
-      </div>
-
-      <div class="sub-toggle-item">
-        <label class="toggle-label">
-          <span class="toggle-text">Какула Левелинг</span>
-          <div class="toggle-switch small">
-            <input type="checkbox" id="toggleKakulaCommand">
-            <span class="slider"></span>
-          </div>
-        </label>
-      </div>
-
-      <div class="sub-toggle-item">
-        <label class="toggle-label">
-          <span class="toggle-text">Какула Дефенс</span>
-          <div class="toggle-switch small">
-            <input type="checkbox" id="toggleKakulaDefense">
-            <span class="slider"></span>
-          </div>
-        </label>
-      </div>
-    </div>
-  </div>
+  <!-- Тумблеры каналов генерируются из файлов паттернов (storage.local):
+       название канала -> при включении раскрываются блоки
+       «Фильтры сообщений» (боты) и «Быстрые команды» (секции commands) -->
+  <div id="channelToggles"></div>
 
   <!-- Большой тумблер-заглушка "Авто Какула Левелинг" -->
   <div class="toggle-container">

@@ -2,14 +2,22 @@
 // Подключается к content.js через <script>-тег
 // (manifest: ["browser-polyfill.js", "patterns.js", "filter.js", "content.js", "chat-input.js"])
 // Паттерны берутся из памяти расширения (chrome.storage.local) через window.NKLPatterns.
+// Никаких захардкоженных имён ботов/каналов/тумблеров: всё генерируется из данных памяти.
 // Наружу отдаётся одна функция: window.NKLFilter.shouldHide(node)
 
 (function () {
   // Глобальные переменные фильтра
-  let patterns = [];            // плоский список всех паттернов канала (для любых ботов)
-  let botPatterns = {};         // { 'alexstrawho': [...] } — паттерны конкретного бота
-  let isHideOthersEnabled = false;
+  let patterns = [];            // плоский список общих командных паттернов (все каналы)
+  let botPatterns = {};         // { 'никбота': [...] } — текстовые паттерны конкретного бота
+  let botSmileEnabled = {};     // { 'никбота': true } — у бота в паттернах есть "$smile$*"
+  let botTogglesEnabled = {};   // { 'filter:<бот>': bool } — тумблеры «Фильтры сообщений» из popup
+  let isHideOthersEnabled = false; // общий выключатель фильтра (главный тумблер в popup)
   let userNickname = '';
+
+  // Ключ тумблера конкретного бота в chrome.storage.sync
+  function botToggleKey(botNick) {
+    return 'filter:' + botNick;
+  }
 
   // 1. Загружаем паттерны из storage.local (первая загрузка — из файлов patterns/)
   async function loadPatterns() {
@@ -17,41 +25,60 @@
       const data = await window.NKLPatterns.ensureLoaded();
       patterns = window.NKLPatterns.getAllPatterns(data);
 
-      // Собираем паттерны по никам ботов — новый формат несёт их в секции bots
+      // Собираем паттерны по никам ботов — новый формат несёт их в секции bots.
+      // Спецпаттерн "$smile$*" не является текстовым: он включает проверку
+      // «начинается со смайлика» только для этого бота.
       botPatterns = {};
-      const channel = window.NKLPatterns.getChannel(data);
-      if (channel && Array.isArray(channel.bots)) {
-        channel.bots.forEach(function (bot) {
-          const nick = String(bot.botUsername || '').toLowerCase();
-          if (!nick) return;
-          botPatterns[nick] = (bot.patterns || []).slice();
-        });
-      }
+      botSmileEnabled = {};
+      window.NKLPatterns.getBotSections(data).forEach(function (bot) {
+        const nick = String(bot.botUsername || '').toLowerCase();
+        if (!nick) return;
+        const list = bot.patterns || [];
+        if (window.NKLPatterns.hasSmilePattern(list)) {
+          botSmileEnabled[nick] = true;
+        }
+        botPatterns[nick] = window.NKLPatterns.withoutSmilePattern(list);
+      });
 
-      console.log('✅ Загружено паттернов:', patterns.length);
+      // Подтягиваем состояние тумблеров ботов из настроек
+      loadBotToggleState();
+
+      console.log('✅ Загружено паттернов:', patterns.length,
+                  '| ботов:', Object.keys(botPatterns).length);
     } catch (error) {
       console.error('❌ Ошибка загрузки паттернов:', error);
     }
   }
 
-  // 2. Загружаем состояние тумблеров и ника из storage
+  // 2. Загружаем состояние главного тумблера и ника из storage
   function loadToggleState() {
-    chrome.storage.sync.get(['hideOthersKakula', 'twitchNickname'], function (result) {
-      isHideOthersEnabled = result.hideOthersKakula || false;
+    chrome.storage.sync.get(['hideFilters', 'twitchNickname'], function (result) {
+      isHideOthersEnabled = result.hideFilters || false;
       userNickname = (result.twitchNickname || '').trim();
     });
   }
 
-  // 3. Проверяем, является ли первый символ смайликом или @
-  function isEmojiOrAt(text, node) {
+  // 2b. Загружаем состояние тумблеров отдельных ботов («Фильтры сообщений»).
+  // Значения по умолчанию — включены (поведение как до появления тумблеров).
+  function loadBotToggleState() {
+    const nicks = Object.keys(botPatterns);
+    if (nicks.length === 0) return;
+    const keys = nicks.map(botToggleKey);
+    chrome.storage.sync.get(keys, function (result) {
+      nicks.forEach(function (nick) {
+        const v = result[botToggleKey(nick)];
+        botTogglesEnabled[nick] = (v === undefined) ? true : !!v;
+      });
+    });
+  }
+
+  // 3. Проверка «сообщение начинается со смайлика»: картинка-эмодзи Twitch
+  // в самом начале сообщения либо юникод-небуква (💸, ‼️, 𖡎 ...).
+  // Вызывается только для ботов, у которых в паттернах есть "$smile$*".
+  function startsWithSmile(text, node) {
     if (!text) return false;
 
-    // 1. Проверяем на @
-    if (text.charAt(0) === '@') {
-      return true;
-    }
-
-    // 2. Проверяем на кастомный эмодзи Twitch (картинка в самом начале)
+    // 1. Кастомный эмодзи Twitch (картинка в самом начале)
     const textContainer = node.querySelector('[data-a-target="chat-message-text"]');
     if (textContainer) {
       const firstChild = textContainer.firstElementChild;
@@ -60,7 +87,7 @@
       }
     }
 
-    // 3. ЖЕЛЕЗОБЕТОННАЯ ПРОВЕРКА:
+    // 2. ЖЕЛЕЗОБЕТОННАЯ ПРОВЕРКА:
     // Проверяем, является ли первый символ ОБЫЧНОЙ буквой или цифрой
     const firstCodePoint = text.codePointAt(0);
     if (firstCodePoint !== undefined) {
@@ -117,7 +144,9 @@
     return false;
   }
 
-  // Паттерны конкретного бота из памяти (storage.local); если бота нет в данных — []
+  // Паттерны конкретного бота из памяти (storage.local); если бота нет в данных — [].
+  // Общие командные паттерны сюда не подмешиваются: паттерны бота применяются
+  // ТОЛЬКО к сообщениям этого бота, общие проверяются отдельно (shouldHide, шаг 3).
   function getPatternsForBot(botUsername) {
     const nick = String(botUsername || '').toLowerCase();
     return botPatterns[nick] || [];
@@ -154,7 +183,7 @@
       return false;
     }
 
-    // Тумблер "скрыть чужой" выключен — ничего не скрываем
+    // Общий тумблер фильтров выключен — ничего не скрываем
     if (!isHideOthersEnabled) {
       return false;
     }
@@ -174,13 +203,14 @@
     let shouldHideFlag = false;
 
     // 2. Сообщения ботов из памяти (botUsername из паттернов):
-    // особый фильтр — скрываем сообщения, начинающиеся с @ или смайлика,
-    // плюс собственные паттерны бота из секции bots нового формата.
+    // паттерны бота применяются ТОЛЬКО к сообщениям этого бота.
+    // Спецпаттерн "$smile$*" включает проверку «начинается со смайлика»,
+    // "@..." обрабатывается дефолтной логикой (@ — обычный символ).
     const nickLower = username.toLowerCase();
     const isKnownBot = Object.prototype.hasOwnProperty.call(botPatterns, nickLower);
 
-    if (isKnownBot) {
-      if (isEmojiOrAt(fullText, node)) {
+    if (isKnownBot && botTogglesEnabled[nickLower] !== false) {
+      if (botSmileEnabled[nickLower] && startsWithSmile(fullText, node)) {
         shouldHideFlag = true;
       }
       if (!shouldHideFlag) {
@@ -207,8 +237,8 @@
 
     let toggleChanged = false;
 
-    if (changes.hideOthersKakula) {
-      const newValue = changes.hideOthersKakula.newValue || false;
+    if (changes.hideFilters) {
+      const newValue = changes.hideFilters.newValue || false;
       if (newValue !== isHideOthersEnabled) {
         isHideOthersEnabled = newValue;
         toggleChanged = true;
@@ -218,6 +248,15 @@
       userNickname = (changes.twitchNickname.newValue || '').trim();
       toggleChanged = true;
     }
+
+    // Тумблеры «Фильтры сообщений» отдельных ботов (filter:<бот>)
+    Object.keys(changes).forEach(function (key) {
+      if (key.indexOf('filter:') === 0) {
+        const nick = key.slice('filter:'.length);
+        botTogglesEnabled[nick] = !!changes[key].newValue;
+        toggleChanged = true;
+      }
+    });
 
     // Если тумблер поменял состояние — уведомляем content.js
     // (тот запустит разовый проход по уже открытым сообщениям)

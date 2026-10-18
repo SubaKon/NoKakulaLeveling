@@ -1,9 +1,8 @@
 // chat-input.js — слушатель поля ввода чата Twitch + всплывающие подсказки команд.
-// Работает ТОЛЬКО при включённом тумблере "Быстрые команды" (quickCommands).
-// Показывает до 5 лучших совпадений по категориям, включённым мини-тумблерами:
-//   quickCommandBase          -> baseCommands   ("Это база, это знать надо")
-//   quickCommandKakula        -> kakulaLeveling ("Какула Левелинг")
-//   quickCommandKakulaDefense -> kakulaDefense  ("Какула Дефенс")
+// Работает при включённом тумблере канала («Быстрые команды» в popup).
+// Показывает до 5 лучших совпадений по секциям команд из памяти расширения;
+// названия и состав секций НЕ захардкожены — берутся из "commands" файлов
+// паттернов (window.NKLPatterns), мини-тумблеры в popup генерируются оттуда же.
 // Паттерны берутся из памяти расширения (chrome.storage.local) через window.NKLPatterns,
 // первая загрузка — из файлов папки patterns/ (новый формат: секция commands).
 // Если команда заканчивается на "*" — показывается пометка "требуется аргумент".
@@ -14,16 +13,15 @@
   const INPUT_SELECTOR = '[data-a-target="chat-input"][data-slate-editor="true"]';
   const MAX_SUGGESTIONS = 5;
 
-  // Категории подсказок: ключ мини-тумблера -> имя секции commands в паттернах + заголовок
-  const CATEGORY_MAP = [
-    { storageKey: 'quickCommandBase', section: 'baseCommands', title: 'База' },
-    { storageKey: 'quickCommandKakula', section: 'kakulaLeveling', title: 'Какула Левелинг' },
-    { storageKey: 'quickCommandKakulaDefense', section: 'kakulaDefense', title: 'Какула Дефенс' },
-  ];
+  // Ключи storage для секций команд строятся по имени секции из файла паттернов:
+  // 'quickCommand:<имя секции>' (например quickCommand:kakulaLeveling).
+  function sectionKey(sectionName) {
+    return 'quickCommand:' + sectionName;
+  }
 
   // ==================== Состояние ====================
   let enabled = false;          // главный тумблер "Быстрые команды"
-  let categoryFlags = {};       // { quickCommandBase: true/false, ... }
+  let categoryFlags = {};       // { 'quickCommand:<секция>': true/false, ... }
   let patternsData = null;      // паттерны из памяти расширения (storage.local)
   let currentInput = null;      // поле ввода, за которым следим
   let lastText = '';            // последний виденный текст (дедуп событий)
@@ -52,11 +50,13 @@
   }
 
   function loadToggles() {
-    const keys = ['quickCommands'].concat(CATEGORY_MAP.map((c) => c.storageKey));
+    // Список секций берём из памяти — захардкоженных категорий нет
+    const sections = patternsData ? window.NKLPatterns.getCommandSections(patternsData) : [];
+    const keys = ['quickCommands'].concat(sections.map((s) => sectionKey(s.name)));
     chrome.storage.sync.get(keys, function (result) {
       enabled = !!result.quickCommands;
-      CATEGORY_MAP.forEach(function (cat) {
-        categoryFlags[cat.storageKey] = !!result[cat.storageKey];
+      sections.forEach(function (sec) {
+        categoryFlags[sectionKey(sec.name)] = !!result[sectionKey(sec.name)];
       });
       if (!enabled) hidePanel();
       else refreshFromInput(); // могли включить тумблер прямо во время ввода
@@ -71,9 +71,9 @@
       if (!enabled) hidePanel();
       else refreshFromInput();
     }
-    CATEGORY_MAP.forEach(function (cat) {
-      if (cat.storageKey in changes) {
-        categoryFlags[cat.storageKey] = !!changes[cat.storageKey].newValue;
+    Object.keys(changes).forEach(function (key) {
+      if (key.indexOf('quickCommand:') === 0) {
+        categoryFlags[key] = !!changes[key].newValue;
         if (enabled && currentInput) refreshFromInput();
       }
     });
@@ -227,28 +227,21 @@
     return 0;
   }
 
-  // Секции commands из памяти, сгруппированные по имени секции:
-  // { baseCommands: [...], kakulaLeveling: [...], kakulaDefense: [...] }
-  function getSectionsByName() {
-    const byName = {};
-    if (!patternsData) return byName;
-    window.NKLPatterns.getCommandSections(patternsData).forEach(function (section) {
-      if (section && section.name) byName[section.name] = section;
-    });
-    return byName;
-  }
-
   function collectSuggestions(query) {
     if (!patternsData) return [];
 
     const results = [];
-    const sections = getSectionsByName();
 
-    CATEGORY_MAP.forEach(function (cat) {
-      if (!categoryFlags[cat.storageKey]) return; // мини-тумблер выключен
-      const section = sections[cat.section];
-      const list = section && section.patterns;
+    // Идём по секциям в порядке order (getCommandSections уже отсортирован);
+    // каждая секция показывается только если её мини-тумблер включён.
+    window.NKLPatterns.getCommandSections(patternsData).forEach(function (section) {
+      if (!section || !section.name) return;
+      const key = sectionKey(section.name);
+      if (!categoryFlags[key]) return; // мини-тумблер выключен
+      const list = section.patterns;
       if (!Array.isArray(list) || list.length === 0) return;
+
+      const title = section.toggleLabel || section.name;
 
       list.forEach(function (entry) {
         // Поддерживаем и строки "!команда", и объекты {cmd, desc}
@@ -258,7 +251,7 @@
 
         const score = scoreMatch(query, cmd, desc);
         if (score > 0) {
-          results.push({ score: score, cmd: cmd, desc: desc, cat: cat.title });
+          results.push({ score: score, cmd: cmd, desc: desc, cat: title });
         }
       });
     });
@@ -578,8 +571,9 @@
   }
 
   function init() {
-    loadPatterns();
-    loadToggles();
+    // Сначала дожидаемся паттернов из памяти — список секций для тумблеров
+    // строится по данным, захардкоженных категорий больше нет.
+    loadPatterns().then(loadToggles);
     if (!findAndAttach()) startBodyWatcher();
   }
 

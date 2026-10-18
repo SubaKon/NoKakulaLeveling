@@ -6,6 +6,7 @@
     {
       "botUsername": "AlexstraWho",
       "toggleLabel": "Какула Левелинг",
+      "botComands": "kakulaLeveling",
       "patterns": [
         "@*",
         "$smile$*",
