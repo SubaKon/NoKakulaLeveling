@@ -245,6 +245,35 @@
       cursor: wait;
     }
 
+    /* Кнопка обновления паттернов с GitHub */
+    #updatePatternsBtn {
+      display: block;
+      width: 100%;
+      margin-top: 8px;
+      padding: 8px 14px;
+      font-size: 13px;
+      background: var(--on-color);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    #updatePatternsBtn:hover {
+      background: #00985c;
+    }
+
+    #updatePatternsBtn:disabled {
+      background: #8fd4bb;
+      cursor: wait;
+    }
+
+    .patterns-info {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 8px;
+    }
+
     .version-info {
       font-size: 12px;
       color: var(--text-secondary);
@@ -394,7 +423,9 @@
   <!-- Проверка обновлений расширения -->
   <div class="update-container">
     <button id="checkUpdateBtn">Проверить обновление</button>
+    <button id="updatePatternsBtn">Обновить паттерны с GitHub</button>
     <div class="version-info" id="versionInfo"></div>
+    <div class="patterns-info" id="patternsInfo"></div>
     <a id="downloadUpdateBtn" class="download-btn" style="display: none;" href="https://github.com/SubaKon/NoKakulaLeveling" target="_blank" rel="noopener">
       Скачать бесплатно без СМС и регистрации
     </a>
@@ -406,6 +437,7 @@
   </div>
 
   <script src="browser-polyfill.js"></script>
+  <script src="patterns.js"></script>
   <script src="popup.js"></script>
 
 

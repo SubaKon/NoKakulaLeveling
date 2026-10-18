@@ -4,6 +4,8 @@
 //   quickCommandBase          -> baseCommands   ("Это база, это знать надо")
 //   quickCommandKakula        -> kakulaLeveling ("Какула Левелинг")
 //   quickCommandKakulaDefense -> kakulaDefense  ("Какула Дефенс")
+// Паттерны берутся из памяти расширения (chrome.storage.local) через window.NKLPatterns,
+// первая загрузка — из файлов папки patterns/ (новый формат: секция commands).
 // Если команда заканчивается на "*" — показывается пометка "требуется аргумент".
 
 (function () {
@@ -12,7 +14,7 @@
   const INPUT_SELECTOR = '[data-a-target="chat-input"][data-slate-editor="true"]';
   const MAX_SUGGESTIONS = 5;
 
-  // Категории подсказок: ключ мини-тумблера -> секция в patterns.json + заголовок
+  // Категории подсказок: ключ мини-тумблера -> имя секции commands в паттернах + заголовок
   const CATEGORY_MAP = [
     { storageKey: 'quickCommandBase', section: 'baseCommands', title: 'База' },
     { storageKey: 'quickCommandKakula', section: 'kakulaLeveling', title: 'Какула Левелинг' },
@@ -22,7 +24,7 @@
   // ==================== Состояние ====================
   let enabled = false;          // главный тумблер "Быстрые команды"
   let categoryFlags = {};       // { quickCommandBase: true/false, ... }
-  let patterns = null;          // содержимое patterns.json
+  let patternsData = null;      // паттерны из памяти расширения (storage.local)
   let currentInput = null;      // поле ввода, за которым следим
   let lastText = '';            // последний виденный текст (дедуп событий)
   let domObserver = null;       // MutationObserver над поддеревом поля ввода
@@ -32,16 +34,21 @@
   let suggestions = [];         // текущий список подсказок
   let activeIndex = -1;         // индекс подсвеченной подсказки
 
-  // ==================== Данные: patterns.json + тумблеры ====================
+  // ==================== Данные: storage.local + тумблеры ====================
+
+  // Паттерны берутся из памяти расширения (window.NKLPatterns).
+  // Если данные ещё не готовы — дожидаемся события готовности из patterns.js.
   function loadPatterns() {
-    try {
-      fetch(chrome.runtime.getURL('patterns.json'))
-        .then((r) => r.json())
-        .then((data) => { patterns = data || {}; })
-        .catch(() => { patterns = {}; });
-    } catch (e) {
-      patterns = {};
+    if (!window.NKLPatterns) {
+      patternsData = null;
+      return Promise.resolve();
     }
+    return window.NKLPatterns.ensureLoaded().then(function (data) {
+      patternsData = data || null;
+      if (enabled) refreshFromInput();
+    }).catch(function () {
+      patternsData = null;
+    });
   }
 
   function loadToggles() {
@@ -220,14 +227,27 @@
     return 0;
   }
 
+  // Секции commands из памяти, сгруппированные по имени секции:
+  // { baseCommands: [...], kakulaLeveling: [...], kakulaDefense: [...] }
+  function getSectionsByName() {
+    const byName = {};
+    if (!patternsData) return byName;
+    window.NKLPatterns.getCommandSections(patternsData).forEach(function (section) {
+      if (section && section.name) byName[section.name] = section;
+    });
+    return byName;
+  }
+
   function collectSuggestions(query) {
-    if (!patterns) return [];
+    if (!patternsData) return [];
 
     const results = [];
+    const sections = getSectionsByName();
 
     CATEGORY_MAP.forEach(function (cat) {
       if (!categoryFlags[cat.storageKey]) return; // мини-тумблер выключен
-      const list = patterns[cat.section];
+      const section = sections[cat.section];
+      const list = section && section.patterns;
       if (!Array.isArray(list) || list.length === 0) return;
 
       list.forEach(function (entry) {

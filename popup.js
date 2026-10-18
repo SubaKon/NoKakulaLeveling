@@ -24,6 +24,10 @@ document.addEventListener('DOMContentLoaded', function() {
   const versionInfo = document.getElementById('versionInfo');
   const downloadUpdateBtn = document.getElementById('downloadUpdateBtn');
 
+  // Блок обновления паттернов с GitHub
+  const updatePatternsBtn = document.getElementById('updatePatternsBtn');
+  const patternsInfo = document.getElementById('patternsInfo');
+
   // ================= Тёмная тема в стиле Twitch =================
   const themeToggleBtn = document.getElementById('themeToggle');
 
@@ -230,4 +234,63 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // При открытии popup — автоматическая проверка, но не чаще раза в день
   checkForUpdates(false);
+
+  // ================= Обновление паттернов с GitHub =================
+  //
+  // Логика сама по себе в patterns.js (window.NKLPatterns.updateFromGitHub):
+  // 1. Проверяем наличие файлов в папке patterns/ на GitHub;
+  // 2. Читаем их;
+  // 3. compatibilityVersion > 2 → окошко "Паттерны несовместимы с этой
+  //    версией расширения";
+  // 4. patternVersion больше той, что в памяти → перезаписываем storage.local.
+
+  function showPatternsVersionInfo() {
+    chrome.storage.local.get(['patterns'], function(result) {
+      const data = (result && result.patterns) || {};
+      const keys = Object.keys(data);
+      if (keys.length === 0) {
+        patternsInfo.textContent = '';
+        return;
+      }
+      const parts = keys.map(function(k) {
+        return k + ': v' + (data[k].patternVersion || 0);
+      });
+      patternsInfo.textContent = 'Паттерны в памяти — ' + parts.join(', ');
+    });
+  }
+
+  updatePatternsBtn.addEventListener('click', function() {
+    updatePatternsBtn.disabled = true;
+    updatePatternsBtn.textContent = 'Обновляем...';
+    patternsInfo.textContent = '';
+
+    window.NKLPatterns.updateFromGitHub().then(function(res) {
+      // Окошко о несовместимости формата
+      if (res.incompatible) {
+        alert('Паттерны несовместимы с этой версией расширения');
+      }
+
+      if (res.updated.length > 0) {
+        patternsInfo.textContent =
+          '✅ Паттерны обновлены: ' + res.updated.join(', ') +
+          '. Перезагрузите страницы Twitch, чтобы применить.';
+      } else if (res.skipped.length > 0 && !res.incompatible && res.errors.length === 0) {
+        patternsInfo.textContent = 'У вас уже последние версии паттернов 🙂';
+      } else if (res.errors.length > 0) {
+        patternsInfo.textContent = 'Не удалось обновить паттерны: ' + res.errors.join('; ');
+      } else if (res.incompatible) {
+        patternsInfo.textContent = 'Обновление не применено: формат паттернов не поддерживается.';
+      }
+
+      showPatternsVersionInfo();
+    }).catch(function(err) {
+      patternsInfo.textContent = 'Ошибка обновления паттернов: ' + err.message;
+    }).finally(function() {
+      updatePatternsBtn.disabled = false;
+      updatePatternsBtn.textContent = 'Обновить паттерны с GitHub';
+    });
+  });
+
+  // При открытии popup показываем версии паттернов, лежащие в памяти
+  window.NKLPatterns.ensureLoaded().then(showPatternsVersionInfo);
 });

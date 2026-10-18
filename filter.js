@@ -1,21 +1,33 @@
 // filter.js — весь фильтр сообщений для NoKakulaLeveling
-// Подключается к content.js через <script>-тег (manifest: ["filter.js", "content.js"])
+// Подключается к content.js через <script>-тег
+// (manifest: ["browser-polyfill.js", "patterns.js", "filter.js", "content.js", "chat-input.js"])
+// Паттерны берутся из памяти расширения (chrome.storage.local) через window.NKLPatterns.
 // Наружу отдаётся одна функция: window.NKLFilter.shouldHide(node)
 
 (function () {
   // Глобальные переменные фильтра
-  let patterns = [];
+  let patterns = [];            // плоский список всех паттернов канала (для любых ботов)
+  let botPatterns = {};         // { 'alexstrawho': [...] } — паттерны конкретного бота
   let isHideOthersEnabled = false;
   let userNickname = '';
 
-  const BOT_NICKNAME = 'AlexstraWho'; // Ник Алекстры
-
-  // 1. Загружаем паттерны из файла
+  // 1. Загружаем паттерны из storage.local (первая загрузка — из файлов patterns/)
   async function loadPatterns() {
     try {
-      const response = await fetch(chrome.runtime.getURL('patterns.json'));
-      const data = await response.json();
-      patterns = data.kakulaLeveling || [];
+      const data = await window.NKLPatterns.ensureLoaded();
+      patterns = window.NKLPatterns.getAllPatterns(data);
+
+      // Собираем паттерны по никам ботов — новый формат несёт их в секции bots
+      botPatterns = {};
+      const channel = window.NKLPatterns.getChannel(data);
+      if (channel && Array.isArray(channel.bots)) {
+        channel.bots.forEach(function (bot) {
+          const nick = String(bot.botUsername || '').toLowerCase();
+          if (!nick) return;
+          botPatterns[nick] = (bot.patterns || []).slice();
+        });
+      }
+
       console.log('✅ Загружено паттернов:', patterns.length);
     } catch (error) {
       console.error('❌ Ошибка загрузки паттернов:', error);
@@ -94,14 +106,21 @@
     }
   }
 
-  // 5. Проверяем текст сообщения по всем паттернам
-  function containsPattern(messageText) {
-    for (const pattern of patterns) {
+  // 5. Проверяем текст сообщения по паттернам.
+  // list — список паттернов (для бота — его собственные, иначе — общие командные)
+  function matchesAny(messageText, list) {
+    for (const pattern of list) {
       if (matchesPattern(messageText, pattern)) {
         return true;
       }
     }
     return false;
+  }
+
+  // Паттерны конкретного бота из памяти (storage.local); если бота нет в данных — []
+  function getPatternsForBot(botUsername) {
+    const nick = String(botUsername || '').toLowerCase();
+    return botPatterns[nick] || [];
   }
 
   // 6. Проверяем, есть ли в сообщении упоминание @ник пользователя (без учёта регистра)
@@ -154,16 +173,24 @@
 
     let shouldHideFlag = false;
 
-    // 2. Если это Алекстра — особый фильтр
-    if (username === BOT_NICKNAME) {
+    // 2. Сообщения ботов из памяти (botUsername из паттернов):
+    // особый фильтр — скрываем сообщения, начинающиеся с @ или смайлика,
+    // плюс собственные паттерны бота из секции bots нового формата.
+    const nickLower = username.toLowerCase();
+    const isKnownBot = Object.prototype.hasOwnProperty.call(botPatterns, nickLower);
+
+    if (isKnownBot) {
       if (isEmojiOrAt(fullText, node)) {
         shouldHideFlag = true;
       }
+      if (!shouldHideFlag) {
+        shouldHideFlag = matchesAny(fullText, getPatternsForBot(username));
+      }
     }
 
-    // 3. Проверка по паттернам — только если флаг ещё false
+    // 3. Проверка по общим командным паттернам — только если флаг ещё false
     if (!shouldHideFlag) {
-      shouldHideFlag = containsPattern(fullText);
+      shouldHideFlag = matchesAny(fullText, patterns);
     }
 
     // 4. Если в сообщении есть упоминание @ник пользователя — не скрываем
