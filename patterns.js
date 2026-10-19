@@ -277,13 +277,34 @@
     return out;
   }
 
- // function getBotCommandPatterns (patternsData, botUsername) {
- // 	if (!botUsername) return [];
- // 	const target = String(botUsername).toLowerCase();
- // 	const out = [];
- // 	
- // 	return out;
- //  }
+  function getBotCommandPatterns(patternsData, botUsername) {
+    if (!botUsername) return [];
+    const target = String(botUsername).toLowerCase();
+    const out = [];
+    const seen = {};
+    getChannels(patternsData).forEach(function (ch) {
+      // Имена командных секций, привязанных к этому боту.
+      const sectionNames = {};
+      (ch.bots || []).forEach(function (b) {
+        if (String(b.botUsername || '').toLowerCase() === target && b.botComands) {
+          sectionNames[String(b.botComands).toLowerCase()] = true;
+        }
+      });
+      if (Object.keys(sectionNames).length === 0) return;
+      // Паттерны командных секций с такими именами.
+      (ch.commands || []).forEach(function (c) {
+        if (sectionNames[String(c.name || '').toLowerCase()]) {
+          (c.patterns || []).forEach(function (p) {
+            if (!seen[p]) {
+              seen[p] = true;
+              out.push(p);
+            }
+          });
+        }
+      });
+    });
+    return out;
+  }
 
   // Командные секции всех каналов, отсортированные по order (для быстрых команд).
   function getCommandSections(patternsData) {
@@ -328,6 +349,7 @@
     getAllPatterns: getAllPatterns,
     getBotPatterns: getBotPatterns,
     getBotSections: getBotSections,
+    getBotCommandPatterns: getBotCommandPatterns,
     getCommandSections: getCommandSections,
     hasSmilePattern: hasSmilePattern,
     withoutSmilePattern: withoutSmilePattern,

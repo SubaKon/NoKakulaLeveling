@@ -14,10 +14,17 @@
   let isHideOthersEnabled = false; // общий выключатель фильтра (главный тумблер в popup)
   let userNickname = '';
   let botCommandPatterns = {}; // { 'никбота': [...] -- команды для этого бота}
+  let filteredBotsList = [];
 
   // Ключ тумблера конкретного бота в chrome.storage.sync
   function botToggleKey(botNick) {
     return 'filter:' + botNick;
+  }
+
+  function rebuildFilteredBotsList() {
+    filteredBotsList = Object.keys(botTogglesEnabled).filter(function (nick) {
+      return botTogglesEnabled[nick] !== false;
+    });
   }
 
   // 1. Загружаем паттерны из storage.local (первая загрузка — из файлов patterns/)
@@ -41,10 +48,14 @@
         botPatterns[nick] = window.NKLPatterns.withoutSmilePattern(list);
       });
 
-      botCommandPaterns = {};
-      //Дописать заполнение структуры 
-      //botCommandPatterns[nick] = 
-     
+      botCommandPatterns = {};
+      Object.keys(botPatterns).forEach(function (nick) {
+        const cmdList = window.NKLPatterns.getBotCommandPatterns(data, nick);
+        if (cmdList.length > 0) {
+          botCommandPatterns[nick] = cmdList;
+        }
+      });
+
       // Подтягиваем состояние тумблеров ботов из настроек
       loadBotToggleState();
 
@@ -74,6 +85,7 @@
         const v = result[botToggleKey(nick)];
         botTogglesEnabled[nick] = (v === undefined) ? true : !!v;
       });
+    rebuildFilteredBotsList();
     });
   }
 
@@ -226,11 +238,12 @@
       if (!shouldHideFlag) {
         shouldHideFlag = matchesAny(fullText, getPatternsForBot(username));
       }
-      // 3. Проверка по общим командным паттернам — только если флаг ещё false
-      if (!shouldHideFlag) {
-        shouldHideFlag = matchesAny(fullText, getCommandPatternsForBot(username);
-      }
-    }
+    }  
+
+    // 3. Проверка по общим командным паттернам — только если флаг ещё false
+    if (!shouldHideFlag && filteredBotsList.length > 0) {
+      shouldHideFlag = matchesAny(fullText, getCommandPatternsForBot(filteredBotsList));
+    }    
 
     // 4. Если в сообщении есть упоминание @ник пользователя — не скрываем
     if (shouldHideFlag && hasUserMention(fullText)) {
@@ -262,7 +275,14 @@
     Object.keys(changes).forEach(function (key) {
       if (key.indexOf('filter:') === 0) {
         const nick = key.slice('filter:'.length);
-        botTogglesEnabled[nick] = !!changes[key].newValue;
+        const enabled = !!changes[key].newValue;
+        botTogglesEnabled[nick] = enabled;
+        const idx = filteredBotsList.indexOf(nick);
+        if (enabled && idx === -1) {
+          filteredBotsList.push(nick);            // включили — добавляем имя бота
+        } else if (!enabled && idx !== -1) {
+          filteredBotsList.splice(idx, 1);        // выключили — убираем имя бота
+        }
         toggleChanged = true;
       }
     });
@@ -280,6 +300,10 @@
   window.NKLFilter = {
     init: loadPatterns,
     loadToggleState: loadToggleState,
-    shouldHide: shouldHide
+    shouldHide: shouldHide,
+    // Список имён ботов, чьи командные паттерны сейчас фильтруются
+    getFilteredBotsList: function () { return filteredBotsList.slice(); },
+    // Командные паттерны для списка ботов (см. getCommandPatternsForBot)
+    getCommandPatternsForBot: getCommandPatternsForBot
   };
 })();
