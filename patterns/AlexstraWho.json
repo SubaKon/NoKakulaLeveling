@@ -1,6 +1,6 @@
 {
   "compatibilityVersion": 2,
-  "patternVersion": 1,
+  "patternVersion": 2,
   "channelName": "AlexstraWho",
   "bots": [
     {
@@ -190,6 +190,14 @@
         "!рандом",
         "!сторона"
       ]
-    }
+    },
+	    {
+      "name": "test",
+      "toggleLabel": "test update",
+      "order": 4,
+      "patterns": [
+        "!test"
+      ]
+    },
   ]
 }
