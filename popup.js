@@ -148,6 +148,19 @@ document.addEventListener('DOMContentLoaded', function() {
   //   «Быстрые команды»    — тумблеры по "toggleLabel" каждой секции (commands).
   // Быстрые команды показаны раскрытым списком сразу (отдельного выключателя нет).
 
+  function pulseMasterFilterFlag() {
+    chrome.storage.sync.get([MASTER_TOGGLE_KEY], function(result) {
+      const current = !!result[MASTER_TOGGLE_KEY];
+      const flipped = {};
+      flipped[MASTER_TOGGLE_KEY] = !current;
+      chrome.storage.sync.set(flipped, function() {
+        const restored = {};
+        restored[MASTER_TOGGLE_KEY] = current;
+        chrome.storage.sync.set(restored);
+      });
+    });
+  }
+
   function createSmallToggle(storageKey, label, hint, defaultValue, onChange) {
     const item = document.createElement('div');
     item.className = 'sub-toggle-item';
@@ -226,8 +239,9 @@ document.addEventListener('DOMContentLoaded', function() {
           botToggleKey(bot.botUsername),
           bot.toggleLabel || bot.botUsername,
           null,
-          true, // по умолчанию фильтры включены
-          null
+          false, // по умолчанию фильтры включены
+          pulseMasterFilterFlag
+          
         );
         filterBlock.appendChild(t.element);
       });
