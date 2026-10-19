@@ -239,7 +239,7 @@ document.addEventListener('DOMContentLoaded', function() {
           botToggleKey(bot.botUsername),
           bot.toggleLabel || bot.botUsername,
           null,
-          false, // по умолчанию фильтры включены
+          true, // по умолчанию фильтры включены
           pulseMasterFilterFlag
           
         );

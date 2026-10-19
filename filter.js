@@ -169,10 +169,20 @@
     return botPatterns[nick] || [];
   }
 
-  function getCommandPatternsForBot(botUsername) {
-  	const nick = String(botUsername || '').toLowerCase();
-  	return botCommandPatterns[nick] || [];
-  }
+function getCommandPatternsForBot(botUsernameOrList) {
+  const list = Array.isArray(botUsernameOrList)
+    ? botUsernameOrList
+    : [botUsernameOrList];
+  const result = [];
+  list.forEach(function (botUsername) {
+    const nick = String(botUsername || '').toLowerCase();
+    const cmdList = botCommandPatterns[nick];
+    if (cmdList) {
+      result.push(...cmdList);
+    }
+  });
+  return result;
+}
 
   // 6. Проверяем, есть ли в сообщении упоминание @ник пользователя (без учёта регистра)
   function hasUserMention(fullText) {
@@ -241,7 +251,7 @@
     }  
 
     // 3. Проверка по общим командным паттернам — только если флаг ещё false
-    if (!shouldHideFlag && filteredBotsList.length > 0) {
+    if (!shouldHideFlag && (filteredBotsList.length > 0)) {
       shouldHideFlag = matchesAny(fullText, getCommandPatternsForBot(filteredBotsList));
     }    
 
