@@ -190,14 +190,6 @@
         "!рандом",
         "!сторона"
       ]
-    },
-    {
-      "name": "test",
-      "toggleLabel": "test update",
-      "order": 4,
-      "patterns": [
-        "!test"
-      ]
     }
   ]
 }
