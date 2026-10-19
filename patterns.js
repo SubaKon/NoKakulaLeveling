@@ -277,6 +277,14 @@
     return out;
   }
 
+ // function getBotCommandPatterns (patternsData, botUsername) {
+ // 	if (!botUsername) return [];
+ // 	const target = String(botUsername).toLowerCase();
+ // 	const out = [];
+ // 	
+ // 	return out;
+ //  }
+
   // Командные секции всех каналов, отсортированные по order (для быстрых команд).
   function getCommandSections(patternsData) {
     const out = [];

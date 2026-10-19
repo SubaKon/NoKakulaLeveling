@@ -13,6 +13,7 @@
   let botTogglesEnabled = {};   // { 'filter:<бот>': bool } — тумблеры «Фильтры сообщений» из popup
   let isHideOthersEnabled = false; // общий выключатель фильтра (главный тумблер в popup)
   let userNickname = '';
+  let botCommandPatterns = {}; // { 'никбота': [...] -- команды для этого бота}
 
   // Ключ тумблера конкретного бота в chrome.storage.sync
   function botToggleKey(botNick) {
@@ -40,6 +41,10 @@
         botPatterns[nick] = window.NKLPatterns.withoutSmilePattern(list);
       });
 
+      botCommandPaterns = {};
+      //Дописать заполнение структуры 
+      //botCommandPatterns[nick] = 
+     
       // Подтягиваем состояние тумблеров ботов из настроек
       loadBotToggleState();
 
@@ -152,6 +157,11 @@
     return botPatterns[nick] || [];
   }
 
+  function getCommandPatternsForBot(botUsername) {
+  	const nick = String(botUsername || '').toLowerCase();
+  	return botCommandPatterns[nick] || [];
+  }
+
   // 6. Проверяем, есть ли в сообщении упоминание @ник пользователя (без учёта регистра)
   function hasUserMention(fullText) {
     if (!userNickname) return false;
@@ -216,11 +226,10 @@
       if (!shouldHideFlag) {
         shouldHideFlag = matchesAny(fullText, getPatternsForBot(username));
       }
-    }
-
-    // 3. Проверка по общим командным паттернам — только если флаг ещё false
-    if (!shouldHideFlag) {
-      shouldHideFlag = matchesAny(fullText, patterns);
+      // 3. Проверка по общим командным паттернам — только если флаг ещё false
+      if (!shouldHideFlag) {
+        shouldHideFlag = matchesAny(fullText, getCommandPatternsForBot(username);
+      }
     }
 
     // 4. Если в сообщении есть упоминание @ник пользователя — не скрываем
