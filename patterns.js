@@ -34,7 +34,7 @@
   // Папка patterns/ в репозитории на GitHub (raw). Сейчас ветка updates —
   // тестовая; перед релизом будет заменена на main.
   const GITHUB_PATTERNS_BASE_URL =
-    'https://raw.githubusercontent.com/SubaKon/NoKakulaLeveling/refs/heads/updates/patterns/';
+    'https://raw.githubusercontent.com/SubaKon/NoKakulaLeveling/refs/heads/main/patterns/';
 
   // Список файлов для проверки с GitHub берём из того же жёстко
   // зафиксированного списка локальных файлов (patterns/X.json → X.json).
@@ -88,7 +88,7 @@
       // --- Шаг 1. Проверяем наличие файлов в папке patterns/ на GitHub ---
       const contentsUrl =
         'https://api.github.com/repos/SubaKon/NoKakulaLeveling/contents/patterns' +
-        '?ref=updates';
+        '?ref=main';
       const contentsResp = await fetch(contentsUrl, {
         headers: { 'Accept': 'application/vnd.github+json' }
       });
