@@ -1,28 +1,39 @@
-// Ждем, пока DOM загрузится
+// popup.js — настройки расширения NoKakulaLeveling.
+// Никаких захардкоженных тумблеров и списков категорий: тумблеры каналов,
+// «Фильтры сообщений» (боты) и «Быстрые команды» (секции commands)
+// генерируются из паттернов в памяти расширения (chrome.storage.local,
+// window.NKLPatterns). Первый элемент интерфейса — ник пользователя:
+// без введённого ника включить тумблер канала нельзя.
+
 document.addEventListener('DOMContentLoaded', function() {
   console.log('Popup загружен');
 
-  // Получаем тумблеры
-  const toggle2 = document.getElementById('toggle2');
+  // Ключи настроек в chrome.storage.sync
+  const MASTER_TOGGLE_KEY = 'hideFilters';   // общий выключатель фильтра сообщений
+  const QUICK_MAIN_KEY = 'quickCommands';    // общий выключатель быстрых команд
 
-  // Тумблер "Быстрые команды" и маленькие тумблеры
-  const toggleQuickCommands = document.getElementById('toggleQuickCommands');
-  const subToggles = document.getElementById('subToggles');
-  const toggleBaseCommand = document.getElementById('toggleBaseCommand');
-  const toggleKakulaCommand = document.getElementById('toggleKakulaCommand');
-  const toggleKakulaDefense = document.getElementById('toggleKakulaDefense');
-
-  // Тумблер-заглушка "Авто Какула Левелинг"
-  const toggle3 = document.getElementById('toggle3');
+  // Ключи тумблеров по данным паттернов
+  function botToggleKey(botUsername) { return 'filter:' + String(botUsername).toLowerCase(); }
+  function sectionToggleKey(sectionName) { return 'quickCommand:' + sectionName; }
 
   // Поле ввода ника
   const nicknameInput = document.getElementById('nicknameInput');
   const saveNicknameBtn = document.getElementById('saveNickname');
 
+  // Контейнер тумблеров каналов (генерируются из паттернов)
+  const channelTogglesEl = document.getElementById('channelToggles');
+
   // Блок проверки обновлений
   const checkUpdateBtn = document.getElementById('checkUpdateBtn');
   const versionInfo = document.getElementById('versionInfo');
   const downloadUpdateBtn = document.getElementById('downloadUpdateBtn');
+
+  // Блок обновления паттернов с GitHub
+  const updatePatternsBtn = document.getElementById('updatePatternsBtn');
+  const patternsInfo = document.getElementById('patternsInfo');
+
+  // Тумблер-заглушка "Авто Какула Левелинг"
+  const toggle3 = document.getElementById('toggle3');
 
   // ================= Тёмная тема в стиле Twitch =================
   const themeToggleBtn = document.getElementById('themeToggle');
@@ -51,26 +62,12 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   // =================================================================
 
-  // Загружаем сохраненное состояние второго тумблера
-  chrome.storage.sync.get(['hideOthersKakula'], function(result) {
-    toggle2.checked = result.hideOthersKakula || false;
-    console.log('Загружено состояние toggle2:', toggle2.checked);
-  });
-
-  // Загружаем сохраненный ник
+  // Загружаем сохраненный ник (ник — первое, что делает тумблеры каналов доступными)
   chrome.storage.sync.get(['twitchNickname'], function(result) {
     nicknameInput.value = result.twitchNickname || '';
     console.log('Загружен ник:', nicknameInput.value);
-  });
-
-  // Загружаем состояние "Быстрых команд" и маленьких тумблеров
-  chrome.storage.sync.get(['quickCommands', 'quickCommandBase', 'quickCommandKakula', 'quickCommandKakulaDefense'], function(result) {
-    toggleQuickCommands.checked = result.quickCommands || false;
-    toggleBaseCommand.checked = result.quickCommandBase || false;
-    toggleKakulaCommand.checked = result.quickCommandKakula || false;
-    toggleKakulaDefense.checked = result.quickCommandKakulaDefense || false;
-    subToggles.style.display = toggleQuickCommands.checked ? 'block' : 'none';
-    console.log('Загружено состояние быстрых команд:', toggleQuickCommands.checked);
+    refreshChannelTogglesEnabled();
+    syncMasterToggleState(); // состояние главного тумблера канала по сохранённым настройкам
   });
 
   // Тумблер-заглушка "Авто Какула Левелинг" — всегда выключен,
@@ -81,19 +78,33 @@ document.addEventListener('DOMContentLoaded', function() {
     alert('Эта функция скоро появится! Следите за обновлениями 😉');
   });
 
-  // Обработчик для второго тумблера
-  toggle2.addEventListener('change', function() {
-    console.log('Toggle 2:', this.checked);
+  // Есть ли введённый ник — без него каналы переключать нельзя
+  function hasNickname() {
+    return !!nicknameInput.value.trim();
+  }
 
-    // Требует заполненный ник
-    if (this.checked && !nicknameInput.value.trim()) {
-      this.checked = false; // Сбрасываем обратно
-      alert('Сначала укажите ваш Twitch ник в поле ниже!');
-      return;
-    }
+  // Активируем/деактивируем все тумблеры каналов по наличию ника
+  function refreshChannelTogglesEnabled() {
+    const ok = hasNickname();
+    channelTogglesEl.querySelectorAll('input.channel-master').forEach(function(input) {
+      input.disabled = !ok;
+    });
+  }
 
-    chrome.storage.sync.set({ hideOthersKakula: this.checked });
-  });
+  // Синхронизируем состояние главных тумблеров каналов с сохранёнными
+  // настройками (hideFilters / quickCommands). Вызывается после загрузки
+  // ника — до этого значение из storage ещё неизвестно.
+  function syncMasterToggleState() {
+    chrome.storage.sync.get([MASTER_TOGGLE_KEY, QUICK_MAIN_KEY], function(result) {
+      const on = !!(result[MASTER_TOGGLE_KEY] || result[QUICK_MAIN_KEY]);
+      channelTogglesEl.querySelectorAll('input.channel-master').forEach(function(input) {
+        input.checked = on;
+        const card = input.closest('.toggle-container');
+        const advanced = card && card.querySelector('.channel-advanced');
+        if (advanced) advanced.style.display = on ? 'block' : 'none';
+      });
+    });
+  }
 
   // Сохранение ника (по кнопке и по Enter)
   function saveNickname() {
@@ -109,10 +120,16 @@ document.addEventListener('DOMContentLoaded', function() {
       console.log('Сохранен ник:', nick);
     });
 
-    // Если включен второй тумблер, а ник убрали — выключаем его
-    if (!nick && toggle2.checked) {
-      toggle2.checked = false;
-      chrome.storage.sync.set({ hideOthersKakula: false });
+    refreshChannelTogglesEnabled();
+
+    // Если ник убрали — выключаем все каналы
+    if (!nick) {
+      channelTogglesEl.querySelectorAll('input.channel-master').forEach(function(input) {
+        input.checked = false;
+        const advanced = input.closest('.toggle-container').querySelector('.channel-advanced');
+        if (advanced) advanced.style.display = 'none';
+      });
+      chrome.storage.sync.set({ hideFilters: false, quickCommands: false });
     }
   }
 
@@ -120,34 +137,200 @@ document.addEventListener('DOMContentLoaded', function() {
   nicknameInput.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') saveNickname();
   });
+  // Ник меняют без кнопки — реагируем сразу на доступность тумблеров
+  nicknameInput.addEventListener('input', refreshChannelTogglesEnabled);
 
-  // Обработчик для тумблера "Быстрые команды"
-  toggleQuickCommands.addEventListener('change', function() {
-    console.log('Быстрые команды:', this.checked);
+  // ================= Построение тумблеров из паттернов =================
+  //
+  // Каждый канал (файл patterns/<Канал>.json) — это карточка с тумблером
+  // по "channelName". При включении раскрываются два блока:
+  //   «Фильтры сообщений:» — тумблеры по "toggleLabel" каждого бота (bots),
+  //   «Быстрые команды»    — тумблеры по "toggleLabel" каждой секции (commands).
+  // Быстрые команды показаны раскрытым списком сразу (отдельного выключателя нет).
 
-    chrome.storage.sync.set({ quickCommands: this.checked });
+  function pulseMasterFilterFlag() {
+    chrome.storage.sync.get([MASTER_TOGGLE_KEY], function(result) {
+      const current = !!result[MASTER_TOGGLE_KEY];
+      const flipped = {};
+      flipped[MASTER_TOGGLE_KEY] = !current;
+      chrome.storage.sync.set(flipped, function() {
+        const restored = {};
+        restored[MASTER_TOGGLE_KEY] = current;
+        chrome.storage.sync.set(restored);
+      });
+    });
+  }
 
-    // Показываем/скрываем маленькие тумблеры
-    subToggles.style.display = this.checked ? 'block' : 'none';
+  function createSmallToggle(storageKey, label, hint, defaultValue, onChange) {
+    const item = document.createElement('div');
+    item.className = 'sub-toggle-item';
 
-  });
+    const labelEl = document.createElement('label');
+    labelEl.className = 'toggle-label';
 
-  // Обработчик для маленького тумблера "Это база, это знать надо"
-  toggleBaseCommand.addEventListener('change', function() {
-    console.log('База команда:', this.checked);
-    chrome.storage.sync.set({ quickCommandBase: this.checked });
-  });
+    const textEl = document.createElement('span');
+    textEl.className = 'toggle-text';
+    textEl.textContent = label;
+    if (hint) {
+      const hintEl = document.createElement('span');
+      hintEl.className = 'sub-toggle-hint';
+      hintEl.textContent = hint;
+      textEl.appendChild(hintEl);
+    }
 
-  // Обработчик для маленького тумблера "Какула Левелинг"
-  toggleKakulaCommand.addEventListener('change', function() {
-    console.log('Какула Левелинг команда:', this.checked);
-    chrome.storage.sync.set({ quickCommandKakula: this.checked });
-  });
+    const switchEl = document.createElement('div');
+    switchEl.className = 'toggle-switch small';
 
-  // Обработчик для маленького тумблера "Какула Дефенс"
-  toggleKakulaDefense.addEventListener('change', function() {
-    console.log('Какула Дефенс команда:', this.checked);
-    chrome.storage.sync.set({ quickCommandKakulaDefense: this.checked });
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.dataset.storageKey = storageKey;
+
+    const slider = document.createElement('span');
+    slider.className = 'slider';
+
+    switchEl.appendChild(input);
+    switchEl.appendChild(slider);
+    labelEl.appendChild(textEl);
+    labelEl.appendChild(switchEl);
+    item.appendChild(labelEl);
+
+    const obj = { input: input, element: item };
+
+    chrome.storage.sync.get([storageKey], function(result) {
+      input.checked = (result[storageKey] === undefined) ? defaultValue : !!result[storageKey];
+    });
+
+    input.addEventListener('change', function() {
+      const payload = {};
+      payload[storageKey] = this.checked;
+      chrome.storage.sync.set(payload);
+      if (onChange) onChange(this.checked);
+    });
+
+    return obj;
+  }
+
+  function buildBlock(titleText) {
+    const block = document.createElement('div');
+    block.className = 'sub-toggles';
+    const title = document.createElement('span');
+    title.className = 'sub-toggles-title';
+    title.textContent = titleText;
+    block.appendChild(title);
+    return block;
+  }
+
+  function buildChannelCard(channelKey, channel) {
+    const container = document.createElement('div');
+    container.className = 'toggle-container';
+
+    // Расширенные настройки канала (создаём раньше главного тумблера —
+    // на него ссылается обработчик change)
+    const advanced = document.createElement('div');
+    advanced.className = 'channel-advanced';
+    advanced.style.display = 'none';
+
+    // --- Блок «Фильтры сообщений:» — по одному тумблеру на каждого бота ---
+    const bots = channel.bots || [];
+    if (bots.length > 0) {
+      const filterBlock = buildBlock('Фильтры сообщений:');
+      bots.forEach(function(bot) {
+        const t = createSmallToggle(
+          botToggleKey(bot.botUsername),
+          bot.toggleLabel || bot.botUsername,
+          null,
+          true, // по умолчанию фильтры включены
+          pulseMasterFilterFlag
+          
+        );
+        filterBlock.appendChild(t.element);
+      });
+      advanced.appendChild(filterBlock);
+    }
+
+    // --- Блок «Быстрые команды» — тумблеры секций commands.
+    // Отдельного выключателя для всего блока нет: список показывается раскрытым
+    // сразу вместе с блоком фильтров. ---
+    const sections = (channel.commands || []).slice().sort(function(a, b) {
+      return (a.order || 0) - (b.order || 0);
+    });
+    if (sections.length > 0) {
+      const cmdBlock = buildBlock('Быстрые команды');
+      sections.forEach(function(sec) {
+        const t = createSmallToggle(
+          sectionToggleKey(sec.name),
+          sec.toggleLabel || sec.name,
+          null,
+          false,
+          null
+        );
+        cmdBlock.appendChild(t.element);
+      });
+      advanced.appendChild(cmdBlock);
+    }
+
+    // Главный тумблер канала — название из "channelName"
+    const label = document.createElement('label');
+    label.className = 'toggle-label';
+
+    const text = document.createElement('span');
+    text.className = 'toggle-text';
+    text.textContent = channel.channelName || channelKey;
+
+    const switchEl = document.createElement('div');
+    switchEl.className = 'toggle-switch';
+
+    const masterInput = document.createElement('input');
+    masterInput.type = 'checkbox';
+    masterInput.className = 'channel-master';
+    masterInput.disabled = !hasNickname(); // без ника канал недоступен
+
+    const slider = document.createElement('span');
+    slider.className = 'slider';
+
+    switchEl.appendChild(masterInput);
+    switchEl.appendChild(slider);
+    label.appendChild(text);
+    label.appendChild(switchEl);
+    container.appendChild(label);
+
+    // Состояние главного тумблера канала применит syncMasterToggleState()
+    // после загрузки ника (иначе не знаем, включены ли фильтры/команды).
+
+    masterInput.addEventListener('change', function() {
+      // Без введённого ника переключать канал нельзя
+      if (this.checked && !hasNickname()) {
+        this.checked = false;
+        alert('Сначала укажите ваш Twitch ник в поле выше!');
+        return;
+      }
+      advanced.style.display = this.checked ? 'block' : 'none';
+      chrome.storage.sync.set({
+        hideFilters: this.checked,
+        quickCommands: this.checked
+      });
+    });
+
+    container.appendChild(advanced);
+    return container;
+  }
+
+  function renderChannels(patternsData) {
+    channelTogglesEl.innerHTML = '';
+    if (!window.NKLPatterns || !patternsData) return;
+    const channels = window.NKLPatterns.getChannels(patternsData);
+    channels.forEach(function(ch) {
+      if (!ch) return;
+      const key = ch.channelName || '';
+      channelTogglesEl.appendChild(buildChannelCard(key, ch));
+    });
+  }
+
+  // Ждём паттерны из памяти (первая загрузка — из файлов patterns/) и строим UI.
+  // После построения повторно синхронизируем состояние тумблеров с настройками.
+  window.NKLPatterns.ensureLoaded().then(function(data) {
+    renderChannels(data);
+    syncMasterToggleState();
   });
 
   // ================= Проверка обновлений расширения =================
@@ -230,4 +413,65 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // При открытии popup — автоматическая проверка, но не чаще раза в день
   checkForUpdates(false);
+
+  // ================= Обновление паттернов с GitHub =================
+  //
+  // Логика сама по себе в patterns.js (window.NKLPatterns.updateFromGitHub):
+  // 1. Проверяем наличие файлов в папке patterns/ на GitHub;
+  // 2. Читаем их;
+  // 3. compatibilityVersion > 2 → окошко "Паттерны несовместимы с этой
+  //    версией расширения";
+  // 4. patternVersion больше той, что в памяти → перезаписываем storage.local.
+
+  function showPatternsVersionInfo() {
+    chrome.storage.local.get(['patterns'], function(result) {
+      const data = (result && result.patterns) || {};
+      const keys = Object.keys(data);
+      if (keys.length === 0) {
+        patternsInfo.textContent = '';
+        return;
+      }
+      const parts = keys.map(function(k) {
+        return k + ': v' + (data[k].patternVersion || 0);
+      });
+      patternsInfo.textContent = 'Паттерны в памяти — ' + parts.join(', ');
+    });
+  }
+
+  updatePatternsBtn.addEventListener('click', function() {
+    updatePatternsBtn.disabled = true;
+    updatePatternsBtn.textContent = 'Обновляем...';
+    patternsInfo.textContent = '';
+
+    window.NKLPatterns.updateFromGitHub().then(function(res) {
+      // Окошко о несовместимости формата
+      if (res.incompatible) {
+        alert('Паттерны несовместимы с этой версией расширения');
+      }
+
+      if (res.updated.length > 0) {
+        patternsInfo.textContent =
+          '✅ Паттерны обновлены: ' + res.updated.join(', ') +
+          '. Перезагрузите страницы Twitch, чтобы применить.';
+        // Перестраиваем тумблеры по обновлённым данным
+        window.NKLPatterns.ensureLoaded().then(renderChannels);
+      } else if (res.skipped.length > 0 && !res.incompatible && res.errors.length === 0) {
+        patternsInfo.textContent = 'У вас уже последние версии паттернов 🙂';
+      } else if (res.errors.length > 0) {
+        patternsInfo.textContent = 'Не удалось обновить паттерны: ' + res.errors.join('; ');
+      } else if (res.incompatible) {
+        patternsInfo.textContent = 'Обновление не применено: формат паттернов не поддерживается.';
+      }
+
+      showPatternsVersionInfo();
+    }).catch(function(err) {
+      patternsInfo.textContent = 'Ошибка обновления паттернов: ' + err.message;
+    }).finally(function() {
+      updatePatternsBtn.disabled = false;
+      updatePatternsBtn.textContent = 'Обновить паттерны с GitHub';
+    });
+  });
+
+  // При открытии popup показываем версии паттернов, лежащие в памяти
+  window.NKLPatterns.ensureLoaded().then(showPatternsVersionInfo);
 });
