@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "NoKakulaLeveling",
   "version": "1.4.0",
-  "description": "Удали Какула Левелинг из своего чата!",
+  "description": "Скрывает спам в чате Twitch и добавляет быстрые команды с автодополнением. Бесплатно и без рекламы.",
   "permissions": [
     "storage"
   ],
