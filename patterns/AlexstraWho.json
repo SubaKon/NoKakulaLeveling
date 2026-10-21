@@ -1,6 +1,6 @@
 {
   "compatibilityVersion": 2,
-  "patternVersion": 1,
+  "patternVersion": 2,
   "channelName": "AlexstraWho",
   "bots": [
     {
@@ -14,8 +14,7 @@
         "This command is currently on cooldown*",
         "Ты приобрел 1*",
         "вывод *",
-        "USAGE:*",
-        "This command is currently on cooldown*"
+        "USAGE:*"
       ]
     },
     {
@@ -188,7 +187,8 @@
         "!кредиторы",
         "!герой*",
         "!рандом",
-        "!сторона"
+        "!сторона",
+        "!гача*"
       ]
     }
   ]
