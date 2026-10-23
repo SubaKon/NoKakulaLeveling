@@ -72,7 +72,7 @@
 ## 📥 Установка для Chromium-браузеров (Chrome, Яндекс, Edge, Opera):
 
 ### Способ 1: Из магазина расширений Chrome 
-(Ждём проверку модерации)
+- Вот вам **[ссылка](https://chromewebstore.google.com/detail/kbjgllfmahkcldfngehmcnadfiicbedg?utm_source=item-share-cb)**
 
 ### Способ 2: Из релиза
 1. Перейди в раздел **[Releases](https://github.com/SubaKon/NoKakulaLeveling/releases)** и скачай последний ZIP-архив.
