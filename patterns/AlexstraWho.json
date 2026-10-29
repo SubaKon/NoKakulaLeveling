@@ -1,6 +1,6 @@
 {
   "compatibilityVersion": 2,
-  "patternVersion": 1,
+  "patternVersion": 2,
   "channelName": "AlexstraWho",
   "bots": [
     {
@@ -188,7 +188,8 @@
         "!герой*",
         "!рандом",
         "!сторона",
-        "!гача*"
+        "!гача*",
+        "!герои"
       ]
     }
   ]
